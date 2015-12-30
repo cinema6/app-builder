@@ -1,0 +1,24 @@
+{
+  "name": "rc-app-builder",
+  "version": "1.0.0",
+  "description": "Node.js library to build a JS app into a single HTML file using browserify and clean-css.",
+  "main": "index.js",
+  "scripts": {
+    "test": "grunt test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cinema6/app-builder.git"
+  },
+  "keywords": [
+    "browserify",
+    "clean-css",
+    "build"
+  ],
+  "author": "Reelcontent, Inc.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cinema6/app-builder/issues"
+  },
+  "homepage": "https://github.com/cinema6/app-builder#readme"
+}
