@@ -35,6 +35,7 @@ describe('AppBuilder', function() {
         MOCKS = {
             html: fs.readFileSync(require.resolve('../helpers/assets/index.html')).toString()
         };
+        MOCKS[require.resolve('../helpers/assets/index.html')] = MOCKS.html;
         MOCKS[require.resolve('../helpers/assets/css/main.css')] = fs.readFileSync(require.resolve('../helpers/assets/css/main.css')).toString();
         MOCKS[require.resolve('../helpers/assets/css/normalize.css')] = fs.readFileSync(require.resolve('../helpers/assets/css/normalize.css')).toString();
         MOCKS[require.resolve('../helpers/assets/js/es6-promise.js')] = fs.readFileSync(require.resolve('../helpers/assets/js/es6-promise.js')).toString();
@@ -264,6 +265,31 @@ describe('AppBuilder', function() {
                             expect($base.attr('href')).toBe(url.resolve(config.baseURL, 'assets/foo'));
                             expect($base.length).toBe(1);
                         });
+                    });
+                });
+
+                describe('if called with a String', function() {
+                    beforeEach(function(done) {
+                        entry = require.resolve('../helpers/assets/index.html');
+
+                        builder = new AppBuilder();
+
+                        result = builder.build(entry);
+                        streamToPromise(result).then(function(data) {
+                            return ($new = cheerio.load(data.toString()));
+                        }).then(done, done.fail);
+                    });
+
+                    it('should create a read stream for the file at that location', function() {
+                        expect(fs.createReadStream).toHaveBeenCalledWith(entry);
+                    });
+
+                    it('should return an HTML document', function() {
+                        expect($new('*').length).toBe($old('*').length);
+                    });
+
+                    it('should set the baseDir', function() {
+                        expect(builder.config.baseDir).toBe(path.dirname(entry));
                     });
                 });
             });
