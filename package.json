@@ -37,6 +37,8 @@
     "combined-stream2": "^1.1.1",
     "lodash": "^3.10.1",
     "replacestream": "^4.0.0",
-    "trumpet": "^1.7.2"
+    "through2": "^2.0.0",
+    "trumpet": "^1.7.2",
+    "uglify-js": "^2.6.1"
   }
 }

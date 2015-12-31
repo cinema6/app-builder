@@ -3,6 +3,7 @@
 describe('AppBuilder', function() {
     var AppBuilder;
     var browserifyPlugin;
+    var uglifyPlugin;
 
     var fs;
     var MockReadable;
@@ -18,6 +19,7 @@ describe('AppBuilder', function() {
     beforeEach(function() {
         AppBuilder = require('../../lib/AppBuilder');
         browserifyPlugin = require('../../plugins/js/browserify');
+        uglifyPlugin = require('../../plugins/js/uglify');
 
         fs = require('fs-extra');
         MockReadable = require('../helpers/MockReadable');
@@ -68,7 +70,7 @@ describe('AppBuilder', function() {
 
                 describe('.js', function() {
                     it('should be an Array of Functions', function() {
-                        expect(builder.plugins.js).toEqual([browserifyPlugin]);
+                        expect(builder.plugins.js).toEqual([browserifyPlugin, uglifyPlugin]);
                     });
                 });
 
