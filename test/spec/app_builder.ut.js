@@ -4,6 +4,7 @@ describe('AppBuilder', function() {
     var AppBuilder;
     var browserifyPlugin;
     var uglifyPlugin;
+    var cleanCSSPlugin;
 
     var fs;
     var MockReadable;
@@ -20,6 +21,7 @@ describe('AppBuilder', function() {
         AppBuilder = require('../../lib/AppBuilder');
         browserifyPlugin = require('../../plugins/js/browserify');
         uglifyPlugin = require('../../plugins/js/uglify');
+        cleanCSSPlugin = require('../../plugins/css/clean');
 
         fs = require('fs-extra');
         MockReadable = require('../helpers/MockReadable');
@@ -76,7 +78,7 @@ describe('AppBuilder', function() {
 
                 describe('.css', function() {
                     it('should be an Array of Functions', function() {
-                        expect(builder.plugins.css).toEqual([]);
+                        expect(builder.plugins.css).toEqual([cleanCSSPlugin]);
                     });
                 });
             });
