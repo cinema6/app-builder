@@ -2,6 +2,8 @@
 
 describe('AppBuilder', function() {
     var AppBuilder;
+    var browserifyPlugin;
+
     var fs;
     var MockReadable;
     var Readable;
@@ -15,6 +17,8 @@ describe('AppBuilder', function() {
 
     beforeEach(function() {
         AppBuilder = require('../../lib/AppBuilder');
+        browserifyPlugin = require('../../plugins/js/browserify');
+
         fs = require('fs-extra');
         MockReadable = require('../helpers/MockReadable');
         Readable = require('stream').Readable;
@@ -64,7 +68,7 @@ describe('AppBuilder', function() {
 
                 describe('.js', function() {
                     it('should be an Array of Functions', function() {
-                        expect(builder.plugins.js).toEqual([]);
+                        expect(builder.plugins.js).toEqual([browserifyPlugin]);
                     });
                 });
 

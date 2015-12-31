@@ -3,6 +3,7 @@
 var TESTS = ['test/spec/**/*.ut.js'];
 var LIBS = [
     'lib/**/*.js',
+    'plugins/**/*.js',
     'index.js'
 ];
 var CODE = LIBS.concat(TESTS);
