@@ -2,7 +2,7 @@
 
 var proxyquire = require('proxyquire');
 
-describe('cleanCSSPlugin(path, file, config)', function() {
+describe('cleanCSSPlugin(path, file, config, callback)', function() {
     var cleanCSSPlugin;
     var MockReadable;
     var fs;
@@ -18,6 +18,8 @@ describe('cleanCSSPlugin(path, file, config)', function() {
         clone = require('lodash/lang/cloneDeep');
 
         stubs = {
+            'pump': jasmine.createSpy('pump()').and.callFake(require('pump')),
+
             'clean-css': jasmine.createSpy('CleanCSS()').and.callFake(function(options) {
                 var CleanCSS = require('clean-css');
                 var cleaner = new CleanCSS(clone(options));
@@ -40,7 +42,7 @@ describe('cleanCSSPlugin(path, file, config)', function() {
 
     describe('when called', function() {
         var code;
-        var path, file, config;
+        var path, file, config, callback;
         var success, failure;
         var cleaner;
         var result;
@@ -76,15 +78,23 @@ describe('cleanCSSPlugin(path, file, config)', function() {
                     target: 'my-target/'
                 }
             };
+            callback = jasmine.createSpy('callback()');
 
             success = jasmine.createSpy('success()');
             failure = jasmine.createSpy('failure()');
 
             streamToPromise(file).finally(done);
 
-            result = cleanCSSPlugin(path, file, config);
+            result = cleanCSSPlugin(path, file, config, callback);
             cleaner = stubs['clean-css'].calls.mostRecent().returnValue;
             streamToPromise(result).then(function(buffer) { return buffer.toString(); }).then(success, failure);
+        });
+
+        it('should pass the callback() to pump()', function() {
+            expect(stubs.pump.calls.count()).toBeGreaterThan(0);
+            stubs.pump.calls.all().forEach(function(call) {
+                expect(call.args[call.args.length - 1]).toBe(callback);
+            });
         });
 
         it('should create a new CleanCSS() instance', function() {
@@ -166,7 +176,7 @@ describe('cleanCSSPlugin(path, file, config)', function() {
 
                 delete config.cleanCSS;
 
-                result = cleanCSSPlugin(path, file, config);
+                result = cleanCSSPlugin(path, file, config, callback);
                 cleaner = stubs['clean-css'].calls.mostRecent().returnValue;
             });
 
@@ -184,7 +194,7 @@ describe('cleanCSSPlugin(path, file, config)', function() {
 
                 config.debug = true;
 
-                result = cleanCSSPlugin(path, file, config);
+                result = cleanCSSPlugin(path, file, config, callback);
                 cleaner = stubs['clean-css'].calls.mostRecent().returnValue;
                 streamToPromise(result).finally(done);
             });

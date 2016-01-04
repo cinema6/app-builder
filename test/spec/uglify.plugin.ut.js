@@ -1,14 +1,24 @@
 'use strict';
 
-describe('uglifyPlugin(path, file, config)', function() {
+var proxyquire = require('proxyquire');
+
+describe('uglifyPlugin(path, file, config, callback)', function() {
     var uglifyPlugin;
     var MockReadable;
     var fs;
     var streamToPromise;
     var UglifyJS;
 
+    var stubs;
+
     beforeEach(function() {
-        uglifyPlugin = require('../../plugins/js/uglify');
+        stubs = {
+            'pump': jasmine.createSpy('pump()').and.callFake(require('pump')),
+
+            '@noCallThru': true
+        };
+
+        uglifyPlugin = proxyquire('../../plugins/js/uglify', stubs);
         MockReadable = require('../helpers/MockReadable');
         fs = require('fs-extra');
         streamToPromise = require('stream-to-promise');
@@ -22,7 +32,7 @@ describe('uglifyPlugin(path, file, config)', function() {
 
     describe('when called', function() {
         var code;
-        var path, file, config;
+        var path, file, config, callback;
         var success, failure;
         var result;
 
@@ -84,12 +94,20 @@ describe('uglifyPlugin(path, file, config)', function() {
                 }
                 /* jshint camelcase: true */
             };
+            callback = jasmine.createSpy('callback()');
 
             success = jasmine.createSpy('success()');
             failure = jasmine.createSpy('failure()');
 
-            result = uglifyPlugin(path, file, config);
+            result = uglifyPlugin(path, file, config, callback);
             streamToPromise(result).then(function(buffer) { return buffer.toString(); }).then(success, failure).finally(done);
+        });
+
+        it('should pass the callback() to pump()', function() {
+            expect(stubs.pump.calls.count()).toBeGreaterThan(0);
+            stubs.pump.calls.all().forEach(function(call) {
+                expect(call.args[call.args.length - 1]).toBe(callback);
+            });
         });
 
         it('should minify the code', function() {
@@ -153,7 +171,7 @@ describe('uglifyPlugin(path, file, config)', function() {
 
                 file = new MockReadable(code);
 
-                result = uglifyPlugin(path, file, config);
+                result = uglifyPlugin(path, file, config, callback);
                 streamToPromise(result).then(function(buffer) { return buffer.toString(); }).then(success, failure).finally(done);
             });
 
@@ -176,7 +194,7 @@ describe('uglifyPlugin(path, file, config)', function() {
 
                 file = new MockReadable(code);
 
-                result = uglifyPlugin(path, file, config);
+                result = uglifyPlugin(path, file, config, callback);
                 streamToPromise(result).finally(done);
             });
 

@@ -10,6 +10,7 @@ describe('AppBuilder', function() {
     var uglifyPlugin;
     var cleanCSSPlugin;
 
+    var EventEmitter;
     var fs;
     var MockReadable;
     var MockWritable;
@@ -25,13 +26,17 @@ describe('AppBuilder', function() {
 
     beforeEach(function() {
         stubs = {
+            'pump': jasmine.createSpy('pump()').and.callFake(require('pump')),
+
             'child_process': {
                 spawn: jasmine.createSpy('child_process.spawn()').and.callFake(function() {
-                    return {
-                        stdin: new MockWritable(),
-                        stdout: new MockReadable(MOCKS.html),
-                        stderr: new MockReadable('')
-                    };
+                    var child = new EventEmitter();
+
+                    child.stdin = new MockWritable();
+                    child.stdout = new MockReadable(MOCKS.html);
+                    child.stderr = new MockReadable('');
+
+                    return child;
                 })
             }
         };
@@ -45,6 +50,7 @@ describe('AppBuilder', function() {
         uglifyPlugin = require('../../plugins/js/uglify');
         cleanCSSPlugin = require('../../plugins/css/clean');
 
+        EventEmitter = require('events').EventEmitter;
         fs = require('fs-extra');
         MockReadable = require('../helpers/MockReadable');
         MockWritable = require('../helpers/MockWritable');
@@ -80,6 +86,10 @@ describe('AppBuilder', function() {
             };
 
             builder = new AppBuilder(config);
+        });
+
+        it('should be an EventEmitter', function() {
+            expect(builder).toEqual(jasmine.any(EventEmitter));
         });
 
         describe('properties:', function() {
@@ -136,6 +146,16 @@ describe('AppBuilder', function() {
                     child = spawn.calls.mostRecent() && spawn.calls.mostRecent().returnValue;
                 });
 
+                it('should use the same error handler for each stream', function() {
+                    expect(stubs.pump.calls.count()).toBeGreaterThan(0);
+                    expect(stubs.pump.calls.all().slice(1).every(function(call) {
+                        var lastArg = call.args[call.args.length - 1];
+                        var firstFn = stubs.pump.calls.all()[0].args[stubs.pump.calls.all()[0].args.length - 1];
+
+                        return (typeof lastArg === 'function') && lastArg === firstFn;
+                    })).toBe(true);
+                });
+
                 it('should spawn a process to perform the build', function() {
                     expect(spawn).toHaveBeenCalledWith(process.execPath, [require.resolve('../../lib/workers/build.js'), JSON.stringify(builder.config), JSON.stringify(builder.plugins)]);
                 });
@@ -176,6 +196,93 @@ describe('AppBuilder', function() {
 
                     it('should return the child\'s stdout stream', function() {
                         expect(result).toBe(child.stdout);
+                    });
+                });
+
+                describe('if the data arrives on the childs stderr stream', function() {
+                    var data;
+                    var errorSpy;
+
+                    beforeEach(function() {
+                        data = new Buffer('I totally failed!');
+
+                        errorSpy = jasmine.createSpy('error()');
+                        builder.on('error', errorSpy);
+
+                        child.stderr.emit('data', data);
+                    });
+
+                    it('should emit the error event', function() {
+                        expect(errorSpy).toHaveBeenCalledWith(new Error(data.toString()));
+                    });
+                });
+
+                describe('if the child exits', function() {
+                    var errorSpy;
+
+                    beforeEach(function() {
+                        errorSpy = jasmine.createSpy('error()');
+                        builder.on('error', errorSpy);
+                    });
+
+                    [0].forEach(function(code) {
+                        describe('if the child exits with code ' + code, function() {
+                            beforeEach(function() {
+                                child.emit('exit', code);
+                            });
+
+                            it('should do nothing', function() {
+                                expect(errorSpy).not.toHaveBeenCalled();
+                            });
+                        });
+                    });
+
+                    [1, 2, 3, 4, 5].forEach(function(code) {
+                        describe('if the child exits with code ' + code, function() {
+                            beforeEach(function() {
+                                child.emit('exit', code);
+                            });
+
+                            it('should emit an Error', function() {
+                                expect(errorSpy).toHaveBeenCalledWith(new Error('Builder exited with code ' + code + '.'));
+                            });
+                        });
+                    });
+                });
+
+                describe('when a stream closes', function() {
+                    var handleError;
+                    var errorSpy;
+
+                    beforeEach(function() {
+                        handleError = stubs.pump.calls.mostRecent().args[stubs.pump.calls.mostRecent().args.length - 1];
+                        errorSpy = jasmine.createSpy('error()');
+
+                        builder.on('error', errorSpy);
+                    });
+
+                    describe('without an error', function() {
+                        beforeEach(function() {
+                            handleError(null);
+                        });
+
+                        it('should not emit the Error event', function() {
+                            expect(errorSpy).not.toHaveBeenCalled();
+                        });
+                    });
+
+                    describe('with an error', function() {
+                        var error;
+
+                        beforeEach(function() {
+                            error = new Error('There was a problem!');
+
+                            handleError(error);
+                        });
+
+                        it('should emit the Error event', function() {
+                            expect(errorSpy).toHaveBeenCalledWith(error);
+                        });
                     });
                 });
             });

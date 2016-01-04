@@ -38,6 +38,7 @@
     "clean-css": "^3.4.8",
     "combined-stream2": "^1.1.1",
     "lodash": "^3.10.1",
+    "pump": "^1.0.1",
     "replacestream": "^4.0.0",
     "through2": "^2.0.0",
     "trumpet": "^1.7.2",

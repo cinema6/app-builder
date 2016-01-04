@@ -36,7 +36,7 @@ describe('browserifyPlugin()', function() {
     });
 
     describe('when called', function() {
-        var path, file, config;
+        var path, file, config, callback;
         var builder;
         var result;
 
@@ -77,8 +77,9 @@ describe('browserifyPlugin()', function() {
                     ]
                 }
             };
+            callback = jasmine.createSpy('callback()');
 
-            result = browserifyPlugin(path, file, config);
+            result = browserifyPlugin(path, file, config, callback);
             builder = stubs.browserify.calls.mostRecent().returnValue;
         });
 
@@ -134,7 +135,7 @@ describe('browserifyPlugin()', function() {
                 delete config.browserify;
                 stubs.browserify.calls.reset();
 
-                result = browserifyPlugin(path, file, config);
+                result = browserifyPlugin(path, file, config, callback);
                 builder = stubs.browserify.calls.mostRecent().returnValue;
             });
 
@@ -156,6 +157,19 @@ describe('browserifyPlugin()', function() {
 
             it('should return the bundle stream', function() {
                 expect(result).toBe(builder.bundle.calls.mostRecent().returnValue);
+            });
+        });
+
+        describe('if there is an error', function() {
+            var error;
+
+            beforeEach(function() {
+                error = new Error('Browserify had an issue!');
+                builder.emit('error', error);
+            });
+
+            it('should call the callback()', function() {
+                expect(callback).toHaveBeenCalledWith(error);
             });
         });
     });

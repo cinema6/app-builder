@@ -5,7 +5,7 @@ var omit = require('lodash/object/omit');
 var assign = require('lodash/object/assign');
 var dirname = require('path').dirname;
 
-function browserifyPlugin(path, file, config) {
+function browserifyPlugin(path, file, config, callback) {
     var browserifyConfig = config.browserify || {};
     var options = assign(omit(browserifyConfig.options, ['entries']), {
         basedir: dirname(path),
@@ -13,7 +13,7 @@ function browserifyPlugin(path, file, config) {
     });
     var plugins = browserifyConfig.plugins || [];
     var transforms = browserifyConfig.transforms || [];
-    var builder = browserify(options);
+    var builder = browserify(options).on('error', callback);
 
     plugins.forEach(function(plugin) {
         builder.plugin.apply(builder, plugin);

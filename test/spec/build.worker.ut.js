@@ -20,6 +20,7 @@ describe('build.js', function() {
     var fsReadStreams;
     var $new, $old;
     var MOCKS;
+    var handleError;
 
     var file, config, plugins;
 
@@ -64,6 +65,8 @@ describe('build.js', function() {
 
     beforeEach(function(done) {
         stubs = {
+            'pump': jasmine.createSpy('pump()').and.callFake(require('pump')),
+
             '@noCallThru': true
         };
 
@@ -159,7 +162,9 @@ describe('build.js', function() {
 
         var _resolveFilename = Module._resolveFilename;
         spyOn(Module, '_resolveFilename').and.callFake(function(request) {
-            if (request in stubs) { return request; }
+            if ([].concat(plugins.js, plugins.css).indexOf(request) > -1) {
+                return request;
+            }
 
             return _resolveFilename.apply(this, arguments);
         });
@@ -172,6 +177,17 @@ describe('build.js', function() {
         $old = cheerio.load(MOCKS.html);
 
         build(file, config, plugins).then(success, failure).finally(done);
+        handleError = stubs.pump.calls.mostRecent().args[stubs.pump.calls.mostRecent().args.length - 1];
+    });
+
+    it('should use the same error handler for each stream', function() {
+        expect(stubs.pump.calls.count()).toBeGreaterThan(0);
+        expect(stubs.pump.calls.all().slice(1).every(function(call) {
+            var lastArg = call.args[call.args.length - 1];
+            var firstFn = stubs.pump.calls.all()[0].args[stubs.pump.calls.all()[0].args.length - 1];
+
+            return (typeof lastArg === 'function') && lastArg === firstFn;
+        })).toBe(true);
     });
 
     it('should contain the same number of nodes', function() {
@@ -184,11 +200,11 @@ describe('build.js', function() {
     });
 
     it('should call each CSS plugin with each CSS file', function() {
-        expect(prependCSS).toHaveBeenCalledWith(require.resolve('../helpers/assets/css/normalize.css'), fsReadStreams[require.resolve('../helpers/assets/css/normalize.css')], config);
-        expect(appendCSS).toHaveBeenCalledWith(require.resolve('../helpers/assets/css/normalize.css'), prependCSS.calls.all()[0].returnValue, config);
+        expect(prependCSS).toHaveBeenCalledWith(require.resolve('../helpers/assets/css/normalize.css'), fsReadStreams[require.resolve('../helpers/assets/css/normalize.css')], config, handleError);
+        expect(appendCSS).toHaveBeenCalledWith(require.resolve('../helpers/assets/css/normalize.css'), prependCSS.calls.all()[0].returnValue, config, handleError);
 
-        expect(prependCSS).toHaveBeenCalledWith(require.resolve('../helpers/assets/css/main.css'), fsReadStreams[require.resolve('../helpers/assets/css/main.css')], config);
-        expect(appendCSS).toHaveBeenCalledWith(require.resolve('../helpers/assets/css/main.css'), prependCSS.calls.all()[1].returnValue, config);
+        expect(prependCSS).toHaveBeenCalledWith(require.resolve('../helpers/assets/css/main.css'), fsReadStreams[require.resolve('../helpers/assets/css/main.css')], config, handleError);
+        expect(appendCSS).toHaveBeenCalledWith(require.resolve('../helpers/assets/css/main.css'), prependCSS.calls.all()[1].returnValue, config, handleError);
 
         expect(prependCSS.calls.count()).toBe(2);
         expect(appendCSS.calls.count()).toBe(2);
@@ -219,11 +235,11 @@ describe('build.js', function() {
     });
 
     it('should call each JS plugin with each JS file', function() {
-        expect(prependJS).toHaveBeenCalledWith(require.resolve('../helpers/assets/js/es6-promise.js'), fsReadStreams[require.resolve('../helpers/assets/js/es6-promise.js')], config);
-        expect(appendJS).toHaveBeenCalledWith(require.resolve('../helpers/assets/js/es6-promise.js'), prependJS.calls.all()[0].returnValue, config);
+        expect(prependJS).toHaveBeenCalledWith(require.resolve('../helpers/assets/js/es6-promise.js'), fsReadStreams[require.resolve('../helpers/assets/js/es6-promise.js')], config, handleError);
+        expect(appendJS).toHaveBeenCalledWith(require.resolve('../helpers/assets/js/es6-promise.js'), prependJS.calls.all()[0].returnValue, config, handleError);
 
-        expect(prependJS).toHaveBeenCalledWith(require.resolve('../helpers/assets/js/main.js'), fsReadStreams[require.resolve('../helpers/assets/js/main.js')], config);
-        expect(appendJS).toHaveBeenCalledWith(require.resolve('../helpers/assets/js/main.js'), prependJS.calls.all()[1].returnValue, config);
+        expect(prependJS).toHaveBeenCalledWith(require.resolve('../helpers/assets/js/main.js'), fsReadStreams[require.resolve('../helpers/assets/js/main.js')], config, handleError);
+        expect(appendJS).toHaveBeenCalledWith(require.resolve('../helpers/assets/js/main.js'), prependJS.calls.all()[1].returnValue, config, handleError);
 
         expect(prependJS.calls.count()).toBe(2);
         expect(appendJS.calls.count()).toBe(2);
@@ -281,6 +297,36 @@ describe('build.js', function() {
 
                 expect($base.attr('href')).toBe(url.resolve(config.baseURL, 'assets/foo'));
                 expect($base.length).toBe(1);
+            });
+        });
+    });
+
+    describe('when a stream closes', function() {
+        beforeEach(function() {
+            spyOn(process.stderr, 'end');
+        });
+
+        describe('without an error', function() {
+            beforeEach(function() {
+                handleError(null);
+            });
+
+            it('should write nothing to stderr', function() {
+                expect(process.stderr.end).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('with an error', function() {
+            var error;
+
+            beforeEach(function() {
+                error = new Error('There was a problem!');
+
+                handleError(error);
+            });
+
+            it('should write to stderr', function() {
+                expect(process.stderr.end).toHaveBeenCalledWith(require('util').inspect(error));
             });
         });
     });
