@@ -161,6 +161,25 @@ describe('uglifyPlugin(path, file, config, callback)', function() {
             expect(success).toHaveBeenCalledWith(UglifyJS.minify.calls.mostRecent().returnValue.code);
         });
 
+        describe('if minification fails', function() {
+            var error;
+
+            beforeEach(function(done) {
+                callback.calls.reset();
+
+                error = new Error('I FAILED!');
+                UglifyJS.minify.and.throwError(error);
+
+                file = new MockReadable(code);
+
+                streamToPromise(uglifyPlugin(path, file, config, callback)).finally(done);
+            });
+
+            it('should call the callback with the error', function() {
+                expect(callback).toHaveBeenCalledWith(error);
+            });
+        });
+
         describe('if no uglify options exist', function() {
             beforeEach(function(done) {
                 success.calls.reset();

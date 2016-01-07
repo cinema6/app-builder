@@ -17,9 +17,14 @@ function uglifyPlugin(path, file, config, callback) {
     return pump(file, through(function collect(chunk, encoding, callback) {
         code = Buffer.concat([code, chunk]);
         callback();
-    }, function minify(callback) {
-        this.push(UglifyJS.minify(code.toString(), options).code);
-        callback();
+    }, function minify(done) {
+        try {
+            this.push(UglifyJS.minify(code.toString(), options).code);
+        } catch (error) {
+            callback(error);
+        }
+
+        done();
     }), callback);
 }
 
