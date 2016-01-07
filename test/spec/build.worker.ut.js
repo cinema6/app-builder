@@ -322,7 +322,7 @@ describe('build.js', function() {
 
     describe('when a stream closes', function() {
         beforeEach(function() {
-            spyOn(process.stderr, 'end');
+            spyOn(process.stderr, 'write');
         });
 
         describe('without an error', function() {
@@ -331,7 +331,7 @@ describe('build.js', function() {
             });
 
             it('should write nothing to stderr', function() {
-                expect(process.stderr.end).not.toHaveBeenCalled();
+                expect(process.stderr.write).not.toHaveBeenCalled();
             });
 
             it('should not exit the process', function() {
@@ -349,7 +349,7 @@ describe('build.js', function() {
             });
 
             it('should write to stderr', function() {
-                expect(process.stderr.end).toHaveBeenCalledWith(require('util').inspect(error));
+                expect(process.stderr.write).toHaveBeenCalledWith(require('util').inspect(error));
             });
 
             it('should exit the process with code 1', function() {
