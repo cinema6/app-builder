@@ -21,6 +21,7 @@ describe('build.js', function() {
     var $new, $old;
     var MOCKS;
     var handleError;
+    var exitDescriptor;
 
     var file, config, plugins;
 
@@ -42,7 +43,9 @@ describe('build.js', function() {
                     enumerable: true
                 },
                 argv: {
-                    value: [process.execPath, require.resolve('../../lib/workers/build.js'), JSON.stringify(config), JSON.stringify(plugins)]
+                    value: [process.execPath, require.resolve('../../lib/workers/build.js'), JSON.stringify(config), JSON.stringify(plugins)],
+                    configurable: true,
+                    enumerable: true
                 }
             });
 
@@ -64,6 +67,16 @@ describe('build.js', function() {
     }
 
     beforeEach(function(done) {
+        exitDescriptor = Object.getOwnPropertyDescriptor(process, 'exit');
+
+        Object.defineProperties(process, {
+            exit: {
+                value: jasmine.createSpy('process.exit()'),
+                configurable: true,
+                enumerable: true
+            }
+        });
+
         stubs = {
             'pump': jasmine.createSpy('pump()').and.callFake(require('pump')),
 
@@ -178,6 +191,12 @@ describe('build.js', function() {
 
         build(file, config, plugins).then(success, failure).finally(done);
         handleError = stubs.pump.calls.mostRecent().args[stubs.pump.calls.mostRecent().args.length - 1];
+    });
+
+    afterEach(function() {
+        Object.defineProperties(process, {
+            exit: exitDescriptor
+        });
     });
 
     it('should use the same error handler for each stream', function() {
@@ -314,6 +333,10 @@ describe('build.js', function() {
             it('should write nothing to stderr', function() {
                 expect(process.stderr.end).not.toHaveBeenCalled();
             });
+
+            it('should not exit the process', function() {
+                expect(process.exit).not.toHaveBeenCalled();
+            });
         });
 
         describe('with an error', function() {
@@ -327,6 +350,10 @@ describe('build.js', function() {
 
             it('should write to stderr', function() {
                 expect(process.stderr.end).toHaveBeenCalledWith(require('util').inspect(error));
+            });
+
+            it('should exit the process with code 1', function() {
+                expect(process.exit).toHaveBeenCalledWith(1);
             });
         });
     });

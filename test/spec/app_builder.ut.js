@@ -199,24 +199,6 @@ describe('AppBuilder', function() {
                     });
                 });
 
-                describe('if the data arrives on the childs stderr stream', function() {
-                    var data;
-                    var errorSpy;
-
-                    beforeEach(function() {
-                        data = new Buffer('I totally failed!');
-
-                        errorSpy = jasmine.createSpy('error()');
-                        builder.on('error', errorSpy);
-
-                        child.stderr.emit('data', data);
-                    });
-
-                    it('should emit the error event', function() {
-                        expect(errorSpy).toHaveBeenCalledWith(new Error(data.toString()));
-                    });
-                });
-
                 describe('if the child exits', function() {
                     var errorSpy;
 
@@ -240,11 +222,13 @@ describe('AppBuilder', function() {
                     [1, 2, 3, 4, 5].forEach(function(code) {
                         describe('if the child exits with code ' + code, function() {
                             beforeEach(function() {
+                                child.stderr.emit('data', new Buffer('Some anoying warning'));
+                                child.stderr.emit('data', new Buffer('THIS IS A REAL PROBLEM!'));
                                 child.emit('exit', code);
                             });
 
-                            it('should emit an Error', function() {
-                                expect(errorSpy).toHaveBeenCalledWith(new Error('Builder exited with code ' + code + '.'));
+                            it('should emit an Error with the last message on stderr', function() {
+                                expect(errorSpy).toHaveBeenCalledWith(new Error('THIS IS A REAL PROBLEM!'));
                             });
                         });
                     });
