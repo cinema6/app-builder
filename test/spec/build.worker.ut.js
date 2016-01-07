@@ -317,6 +317,22 @@ describe('build.js', function() {
                 expect($base.attr('href')).toBe(url.resolve(config.baseURL, 'assets/foo'));
                 expect($base.length).toBe(1);
             });
+
+            describe('without an href', function() {
+                beforeEach(function(done) {
+                    success.calls.reset();
+                    failure.calls.reset();
+
+                    $old('head base').removeAttr('href');
+
+                    file = new MockReadable($old.html());
+                    build(file, config, plugins).then(success, failure).finally(done);
+                });
+
+                it('should give the <base> an href that is equal to the baseURL', function() {
+                    expect($new('base').attr('href')).toBe(config.baseURL);
+                });
+            });
         });
     });
 
