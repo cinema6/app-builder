@@ -3,6 +3,7 @@
   "version": "1.0.2",
   "description": "Node.js library to build a JS app into a single HTML file using browserify and clean-css.",
   "main": "index.js",
+  "bin": "./bin/rc-app-builder.js",
   "scripts": {
     "test": "grunt test"
   },
@@ -36,6 +37,7 @@
     "browserify": "^12.0.1",
     "clean-css": "^3.4.8",
     "combined-stream2": "^1.1.1",
+    "commander": "^2.9.0",
     "fs-extra": "^0.26.4",
     "lodash": "^3.10.1",
     "pump": "^1.0.1",
