@@ -2,6 +2,7 @@
 
 var TESTS = ['test/spec/**/*.ut.js'];
 var LIBS = [
+    'bin/**',
     'lib/**/*.js',
     'plugins/**/*.js',
     'index.js'
