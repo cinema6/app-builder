@@ -1,6 +1,6 @@
 {
   "name": "rc-app-builder",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Node.js library to build a JS app into a single HTML file using browserify and clean-css.",
   "main": "index.js",
   "bin": "./bin/rc-app-builder.js",
@@ -42,6 +42,7 @@
     "lodash": "^3.10.1",
     "pump": "^1.0.1",
     "replacestream": "^4.0.0",
+    "resolve": "^1.1.6",
     "through2": "^2.0.0",
     "trumpet": "^1.7.2",
     "uglify-js": "^2.6.1"

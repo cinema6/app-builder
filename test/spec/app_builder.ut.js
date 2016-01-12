@@ -92,10 +92,41 @@ describe('AppBuilder', function() {
             expect(builder).toEqual(jasmine.any(EventEmitter));
         });
 
+        describe('if plugins.js are specified', function() {
+            beforeEach(function() {
+                config.plugins = {
+                    js: ['plugin1', 'plugin2']
+                };
+
+                builder = new AppBuilder(config);
+            });
+
+            it('should override the js plugins', function() {
+                expect(builder.plugins.js).toEqual(config.plugins.js);
+                expect(builder.plugins.css).toEqual([require.resolve('../../plugins/css/clean')]);
+            });
+        });
+
+        describe('if plugins.css are specified', function() {
+            beforeEach(function() {
+                config.plugins = {
+                    css: ['plugin1', 'plugin2']
+                };
+
+                builder = new AppBuilder(config);
+            });
+
+            it('should override the css plugins', function() {
+                expect(builder.plugins.css).toEqual(config.plugins.css);
+                expect(builder.plugins.js).toEqual([require.resolve('../../plugins/js/browserify'), require.resolve('../../plugins/js/uglify')]);
+            });
+        });
+
         describe('properties:', function() {
             describe('config', function() {
-                it('should be the provided config', function() {
-                    expect(builder.config).toBe(config);
+                it('should equal the provided config', function() {
+                    expect(builder.config).toEqual(config);
+                    expect(builder.config).not.toBe(config);
                 });
             });
 
