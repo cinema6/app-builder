@@ -22,6 +22,7 @@ describe('build.js', function() {
     var MOCKS;
     var handleError;
     var exitDescriptor;
+    var pluginPaths;
 
     var file, config, plugins;
 
@@ -115,12 +116,12 @@ describe('build.js', function() {
         };
         plugins = {
             js: [
-                path.resolve(__dirname, '../../plugins/js/prepend.js'),
-                path.resolve(__dirname, '../../plugins/js/append.js')
+                './plugins/js/prepend.js',
+                './plugins/js/append.js'
             ],
             css: [
-                path.resolve(__dirname, '../../plugins/css/prepend.js'),
-                path.resolve(__dirname, '../../plugins/css/append.js')
+                './plugins/css/prepend.js',
+                './plugins/css/append.js'
             ]
         };
 
@@ -169,23 +170,18 @@ describe('build.js', function() {
             return combined;
         });
 
-        [].concat(plugins.js, plugins.css).forEach(function(path) {
+        pluginPaths = [].concat(plugins.js, plugins.css).map(function(plugin) {
+            return path.resolve(config.baseDir, plugin);
+        });
+
+        pluginPaths.forEach(function(path) {
             require.cache[path] = { id: path, exports: {}, filename: path, loaded: true };
         });
 
-        var _resolveFilename = Module._resolveFilename;
-        spyOn(Module, '_resolveFilename').and.callFake(function(request) {
-            if ([].concat(plugins.js, plugins.css).indexOf(request) > -1) {
-                return request;
-            }
-
-            return _resolveFilename.apply(this, arguments);
-        });
-
-        stubs[plugins.js[0]] = prependJS;
-        stubs[plugins.js[1]] = appendJS;
-        stubs[plugins.css[0]] = prependCSS;
-        stubs[plugins.css[1]] = appendCSS;
+        stubs[pluginPaths[0]] = prependJS;
+        stubs[pluginPaths[1]] = appendJS;
+        stubs[pluginPaths[2]] = prependCSS;
+        stubs[pluginPaths[3]] = appendCSS;
 
         $old = cheerio.load(MOCKS.html);
 
