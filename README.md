@@ -15,6 +15,9 @@ Usage
         * (`String`) **config.baseDir**: The folder from which relative paths in the entry file should be resolved. Specifying this is only necessary if a `stream.Readable()` is passed to `AppBuilder.prototype.build()`.
         * (`String`) **config.baseURL**: If the entry HTML file contains a `<base>` tag, its `href` will be modified to resolve to the `baseURL`.
         * (`Boolean`) **config.debug**: If `true` will cause certain plugins to behave differently. For example, the UglifyJS plugin will do nothing.
+        * (`Object`) *[optional]* **config.plugins**: Plugins to use.
+            * (`Array` of `String`s) *[optional]* **config.plugins.js**: Name of plugin modules for transforming JavaScript. Will be looked-up using Node's `require()` algorithm relative to `config.baseDir`. If unspecified, default JS plugins will be used.
+            * (`Array` of `String`s) *[optional]* **config.plugins.css**: Name of plugin modules for transforming CSS. Will be looked-up using Node's `require()` algorithm relative to `config.baseDir`. If unspecified, default CSS plugins will be used.
 * Properties
     * (`Object`) **config**: The `config` passed to the constructor.
     * (`Object`) **plugins**: The build plugins that will be used:
