@@ -154,8 +154,9 @@ describe('AppBuilder', function() {
                 var entry;
                 var result;
                 var child, fsReadStreams;
+                var success, failure;
 
-                beforeEach(function() {
+                beforeEach(function(done) {
                     entry = new MockReadable(MOCKS.html);
                     spyOn(entry, 'pipe').and.callThrough();
 
@@ -173,7 +174,15 @@ describe('AppBuilder', function() {
                         }
                     });
 
+                    success = jasmine.createSpy('success()');
+                    failure = jasmine.createSpy('failure()');
+
                     result = builder.build(entry);
+                    streamToPromise(result).then(function(data) { return data.toString(); }).then(success, failure).finally(done);
+                    entry.on('end', function() {
+                        process.nextTick(function() { child.emit('exit', 0); });
+                    });
+
                     child = spawn.calls.mostRecent() && spawn.calls.mostRecent().returnValue;
                 });
 
@@ -195,18 +204,25 @@ describe('AppBuilder', function() {
                     expect(entry.pipe).toHaveBeenCalledWith(child.stdin);
                 });
 
-                it('should return the child\'s stdout stream', function() {
-                    expect(result).toBe(child.stdout);
+                it('should fulfill with the data of the stdout stream', function() {
+                    expect(success).toHaveBeenCalledWith(MOCKS.html);
                 });
 
                 describe('if the entry is a path', function() {
-                    beforeEach(function() {
+                    beforeEach(function(done) {
+                        success.calls.reset();
+                        failure.calls.reset();
+
                         builder = new AppBuilder();
                         spawn.calls.reset();
                         entry = require.resolve('../helpers/assets/index.html');
 
                         result = builder.build(entry);
+                        streamToPromise(result).then(function(data) { return data.toString(); }).then(success, failure).finally(done);
                         child = spawn.calls.mostRecent() && spawn.calls.mostRecent().returnValue;
+                        fsReadStreams[entry].on('end', function() {
+                            process.nextTick(function() { child.emit('exit', 0); });
+                        });
                     });
 
                     it('should create a read stream for the file', function() {
@@ -225,23 +241,44 @@ describe('AppBuilder', function() {
                         expect(fsReadStreams[entry].pipe).toHaveBeenCalledWith(child.stdin);
                     });
 
-                    it('should return the child\'s stdout stream', function() {
-                        expect(result).toBe(child.stdout);
+                    it('should fulfill with the data of the stdout stream', function() {
+                        expect(success).toHaveBeenCalledWith(MOCKS.html);
                     });
                 });
 
                 describe('if the child exits', function() {
                     var errorSpy;
+                    var end;
 
                     beforeEach(function() {
-                        errorSpy = jasmine.createSpy('error()');
+                        success.calls.reset();
+                        failure.calls.reset();
+
+                        builder = new AppBuilder();
+                        spawn.calls.reset();
+                        entry = new MockReadable(MOCKS.html);
+
+                        errorSpy = jasmine.createSpy('error()').and.callFake(function() {
+                            expect(end).not.toHaveBeenCalled();
+                        });
                         builder.on('error', errorSpy);
+
+                        end = jasmine.createSpy('end()');
+                        result = builder.build(entry).on('end', end);
+                        result.on('data', function() {});
+
+                        child = spawn.calls.mostRecent() && spawn.calls.mostRecent().returnValue;
                     });
 
                     [0].forEach(function(code) {
                         describe('if the child exits with code ' + code, function() {
-                            beforeEach(function() {
-                                child.emit('exit', code);
+                            beforeEach(function(done) {
+                                entry.on('end', function() {
+                                    process.nextTick(function() {
+                                        child.emit('exit', code);
+                                        done();
+                                    });
+                                });
                             });
 
                             it('should do nothing', function() {
@@ -252,10 +289,16 @@ describe('AppBuilder', function() {
 
                     [1, 2, 3, 4, 5].forEach(function(code) {
                         describe('if the child exits with code ' + code, function() {
-                            beforeEach(function() {
+                            beforeEach(function(done) {
                                 child.stderr.emit('data', new Buffer('Some anoying warning'));
                                 child.stderr.emit('data', new Buffer('THIS IS A REAL PROBLEM!'));
-                                child.emit('exit', code);
+
+                                entry.on('end', function() {
+                                    setTimeout(function() {
+                                        child.emit('exit', code);
+                                        done();
+                                    }, 5);
+                                });
                             });
 
                             it('should emit an Error with the last message on stderr', function() {
@@ -266,19 +309,33 @@ describe('AppBuilder', function() {
                 });
 
                 describe('when a stream closes', function() {
-                    var handleError;
                     var errorSpy;
+                    var end;
 
                     beforeEach(function() {
-                        handleError = stubs.pump.calls.mostRecent().args[stubs.pump.calls.mostRecent().args.length - 1];
-                        errorSpy = jasmine.createSpy('error()');
+                        success.calls.reset();
+                        failure.calls.reset();
 
+                        builder = new AppBuilder();
+                        spawn.calls.reset();
+                        entry = new MockReadable(MOCKS.html);
+
+                        errorSpy = jasmine.createSpy('error()').and.callFake(function() {
+                            expect(end).not.toHaveBeenCalled();
+                        });
                         builder.on('error', errorSpy);
+
+                        end = jasmine.createSpy('end()');
+                        result = builder.build(entry).on('end', end);
+                        result.on('data', function() {});
+
+                        child = spawn.calls.mostRecent() && spawn.calls.mostRecent().returnValue;
                     });
 
                     describe('without an error', function() {
-                        beforeEach(function() {
-                            handleError(null);
+                        beforeEach(function(done) {
+                            result.on('end', done);
+                            child.emit('exit', 0);
                         });
 
                         it('should not emit the Error event', function() {
@@ -291,8 +348,7 @@ describe('AppBuilder', function() {
 
                         beforeEach(function() {
                             error = new Error('There was a problem!');
-
-                            handleError(error);
+                            entry.emit('error', error);
                         });
 
                         it('should emit the Error event', function() {
