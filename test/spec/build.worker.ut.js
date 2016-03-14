@@ -79,8 +79,6 @@ describe('build.js', function() {
         });
 
         stubs = {
-            'pump': jasmine.createSpy('pump()').and.callFake(require('pump')),
-
             '@noCallThru': true
         };
 
@@ -185,24 +183,16 @@ describe('build.js', function() {
 
         $old = cheerio.load(MOCKS.html);
 
-        build(file, config, plugins).then(success, failure).finally(done);
-        handleError = stubs.pump.calls.mostRecent().args[stubs.pump.calls.mostRecent().args.length - 1];
+        build(file, config, plugins).then(success, failure).then(function() {
+            handleError = prependCSS.calls.mostRecent().args[3];
+            expect(handleError).toEqual(jasmine.any(Function));
+        }).then(done, done.fail);
     });
 
     afterEach(function() {
         Object.defineProperties(process, {
             exit: exitDescriptor
         });
-    });
-
-    it('should use the same error handler for each stream', function() {
-        expect(stubs.pump.calls.count()).toBeGreaterThan(0);
-        expect(stubs.pump.calls.all().slice(1).every(function(call) {
-            var lastArg = call.args[call.args.length - 1];
-            var firstFn = stubs.pump.calls.all()[0].args[stubs.pump.calls.all()[0].args.length - 1];
-
-            return (typeof lastArg === 'function') && lastArg === firstFn;
-        })).toBe(true);
     });
 
     it('should contain the same number of nodes', function() {
